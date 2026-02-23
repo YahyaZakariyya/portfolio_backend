@@ -5,7 +5,7 @@ for efficient data management.
 """
 
 from django.contrib import admin
-from .models import Profile, Skill, Project, Experience, Education
+from .models import Profile, Skill, Project, Experience, Education, Certification
 
 
 # =============================================================================
@@ -104,7 +104,7 @@ class ExperienceAdmin(admin.ModelAdmin):
             'fields': ('start_date', 'end_date', 'is_current')
         }),
         ('Details', {
-            'fields': ('description', 'technologies_used')
+            'fields': ('description', 'description_bullets', 'technologies_used')
         }),
         ('Display', {
             'fields': ('order',)
@@ -133,6 +133,34 @@ class EducationAdmin(admin.ModelAdmin):
         }),
         ('Details', {
             'fields': ('description', 'grade')
+        }),
+        ('Display', {
+            'fields': ('order',)
+        }),
+        ('Timestamps', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',),
+        }),
+    )
+
+
+@admin.register(Certification)
+class CertificationAdmin(admin.ModelAdmin):
+    list_display = ('name', 'issuing_organization', 'issue_date', 'expiration_date', 'order')
+    search_fields = ('name', 'issuing_organization', 'credential_id')
+    list_editable = ('order',)
+    ordering = ('order', '-issue_date')
+    readonly_fields = ('created_at', 'updated_at')
+
+    fieldsets = (
+        ('Certification Details', {
+            'fields': ('name', 'issuing_organization')
+        }),
+        ('Dates', {
+            'fields': ('issue_date', 'expiration_date')
+        }),
+        ('Credentials', {
+            'fields': ('credential_id', 'credential_url')
         }),
         ('Display', {
             'fields': ('order',)

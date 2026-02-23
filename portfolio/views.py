@@ -8,7 +8,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .models import Profile, Skill, Project, Experience, Education
+from .models import Profile, Skill, Project, Experience, Education, Certification
 from .serializers import (
     ProfileSerializer,
     SkillSerializer,
@@ -16,6 +16,7 @@ from .serializers import (
     ProjectDetailSerializer,
     ExperienceSerializer,
     EducationSerializer,
+    CertificationSerializer,
 )
 
 
@@ -89,5 +90,16 @@ class EducationListView(ListAPIView):
     """
     queryset = Education.objects.all()
     serializer_class = EducationSerializer
+    permission_classes = [AllowAny]
+    pagination_class = None
+
+
+class CertificationListView(ListAPIView):
+    """
+    GET /api/certifications/
+    Returns all certification entries.
+    """
+    queryset = Certification.objects.all()
+    serializer_class = CertificationSerializer
     permission_classes = [AllowAny]
     pagination_class = None

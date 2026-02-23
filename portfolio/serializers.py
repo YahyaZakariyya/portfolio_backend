@@ -4,7 +4,7 @@ Read-only serializers for all portfolio models.
 """
 
 from rest_framework import serializers
-from .models import Profile, Skill, Project, Experience, Education
+from .models import Profile, Skill, Project, Experience, Education, Certification
 
 
 class ProfileSerializer(serializers.ModelSerializer):
@@ -101,6 +101,7 @@ class ExperienceSerializer(serializers.ModelSerializer):
             'start_date',
             'end_date',
             'description',
+            'description_bullets',
             'technologies_used',
             'company_url',
             'is_current',
@@ -136,6 +137,22 @@ class EducationSerializer(serializers.ModelSerializer):
             'end_year',
             'description',
             'grade',
+            'order',
+        ]
+        read_only_fields = fields
+
+
+class CertificationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Certification
+        fields = [
+            'id',
+            'name',
+            'issuing_organization',
+            'issue_date',
+            'expiration_date',
+            'credential_id',
+            'credential_url',
             'order',
         ]
         read_only_fields = fields
