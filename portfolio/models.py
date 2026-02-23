@@ -140,8 +140,14 @@ class Experience(TimestampedModel):
         help_text="Leave blank if currently working here"
     )
     description = models.TextField()
+    description_bullets = models.JSONField(
+        default=list,
+        blank=True,
+        help_text='Optional list of bullet points for rendering on the frontend'
+    )
     technologies_used = models.JSONField(
         default=list,
+        blank=True,
         help_text='e.g. ["Python", "Django", "AWS"]'
     )
     company_url = models.URLField(blank=True, default='')
@@ -186,3 +192,29 @@ class Education(TimestampedModel):
 
     def __str__(self):
         return f"{self.degree} — {self.institute_name}"
+
+
+class Certification(TimestampedModel):
+    """Professional certifications."""
+
+    name = models.CharField(max_length=200)
+    issuing_organization = models.CharField(
+        max_length=200,
+        help_text="e.g. University of Michigan, Codio, Packt"
+    )
+    issue_date = models.DateField()
+    expiration_date = models.DateField(
+        null=True,
+        blank=True,
+        help_text="Leave blank if it does not expire"
+    )
+    credential_id = models.CharField(max_length=100, blank=True, default='')
+    credential_url = models.URLField(blank=True, default='')
+    order = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ['order', '-issue_date']
+        verbose_name_plural = "Certifications"
+
+    def __str__(self):
+        return f"{self.name} from {self.issuing_organization}"

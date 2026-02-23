@@ -18,6 +18,7 @@ def api_root(request):
             "projects_detail": "/api/projects/<slug>/",
             "experience": "/api/experience/",
             "education": "/api/education/",
+            "certifications": "/api/certifications/",
         }
     })
 
