@@ -1,0 +1,693 @@
+{% extends "writer/base.html" %}
+{% block title %}{% if post %}Edit: {{ post.title }}{% else %}New Post{% endif %}{% endblock %}
+{% block nav_new %}{% if not post %}active{% endif %}{% endblock %}
+
+{% block extra_style %}
+/* ── Post form layout ── */
+.editor-layout {
+  display: grid;
+  grid-template-columns: 1fr 300px;
+  gap: 20px;
+  align-items: start;
+}
+@media (max-width: 900px) {
+  .editor-layout { grid-template-columns: 1fr; }
+}
+
+/* ── Block editor ── */
+.block-editor { padding: 20px; }
+.block-editor-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 16px;
+}
+.block-editor-label {
+  font-size: 11px; font-weight: 600; letter-spacing: .06em; color: var(--text-muted);
+}
+.block-count { font-size: 11px; color: var(--text-muted); }
+
+#block-list { min-height: 60px; }
+
+/* ── Block card ── */
+.block-card {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin-bottom: 10px;
+  overflow: hidden;
+}
+.block-card-head {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 12px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+}
+.block-type-badge {
+  font-size: 10px; font-weight: 700; letter-spacing: .06em;
+  padding: 2px 7px; border-radius: 3px;
+  background: var(--primary-dim); color: var(--primary);
+  flex-shrink: 0;
+}
+.block-card-actions {
+  display: flex; gap: 3px; margin-left: auto;
+}
+.block-btn {
+  background: none; border: 1px solid var(--border); border-radius: 3px;
+  color: var(--text-muted); cursor: pointer; font-size: 11px;
+  padding: 2px 7px; transition: all .12s;
+}
+.block-btn:hover { background: var(--surface); color: var(--text); }
+.block-btn.del:hover { border-color: var(--danger); color: var(--danger); }
+
+.block-body { padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+.block-body label {
+  font-size: 10px; font-weight: 600; color: var(--text-muted);
+  letter-spacing: .06em; margin-bottom: 3px;
+}
+.block-body input, .block-body textarea, .block-body select {
+  font-size: 13px;
+}
+.block-body textarea { min-height: 70px; }
+
+/* List items */
+.list-items { display: flex; flex-direction: column; gap: 4px; }
+.list-item-row { display: flex; gap: 4px; }
+.list-item-row input { flex: 1; }
+.list-item-row button {
+  background: none; border: 1px solid var(--border); border-radius: var(--radius);
+  color: var(--danger); cursor: pointer; padding: 0 8px; font-size: 14px;
+  transition: background .12s;
+}
+.list-item-row button:hover { background: rgba(248,81,73,.1); }
+
+/* Table */
+.table-row { display: flex; gap: 4px; margin-bottom: 4px; }
+.table-row input { flex: 1; }
+
+/* Add block toolbar */
+.add-block-bar {
+  margin-top: 14px; padding-top: 14px;
+  border-top: 1px dashed var(--border);
+}
+.add-block-label {
+  font-size: 10px; font-weight: 600; letter-spacing: .06em;
+  color: var(--text-muted); margin-bottom: 8px;
+}
+.add-block-btns { display: flex; flex-wrap: wrap; gap: 5px; }
+.add-btn {
+  background: var(--bg); border: 1px solid var(--border);
+  border-radius: var(--radius); color: var(--text-muted); cursor: pointer;
+  font-size: 11px; padding: 4px 10px; transition: all .12s;
+}
+.add-btn:hover { border-color: var(--primary); color: var(--primary); background: var(--primary-dim); }
+
+/* ── Sidebar ── */
+.sidebar { display: flex; flex-direction: column; gap: 16px; }
+.sidebar-section { padding: 16px; }
+.sidebar-title {
+  font-size: 11px; font-weight: 600; letter-spacing: .06em;
+  color: var(--text-muted); margin-bottom: 14px;
+  padding-bottom: 8px; border-bottom: 1px solid var(--border);
+}
+.sidebar .form-group { margin-bottom: 12px; }
+
+/* Tags checkboxes */
+.tag-checks { display: flex; flex-direction: column; gap: 6px; max-height: 200px; overflow-y: auto; }
+.tag-check {
+  display: flex; align-items: center; gap: 8px;
+  cursor: pointer; font-size: 13px;
+}
+.tag-check input { width: auto; }
+.tag-check-pill {
+  display: inline-block; padding: 1px 8px; border-radius: 10px; font-size: 11px;
+}
+
+/* Status select highlight */
+select[name="status"] { font-weight: 600; }
+
+/* Save bar */
+.save-bar {
+  position: sticky; bottom: 0; left: 0; right: 0;
+  background: var(--surface); border-top: 1px solid var(--border);
+  padding: 12px 24px;
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; z-index: 50;
+  margin: 24px -24px -28px;
+}
+.save-bar-left { display: flex; align-items: center; gap: 12px; }
+{% endblock %}
+
+{% block content %}
+<div class="w-page-header">
+  <div>
+    <div class="w-page-title">{% if post %}Edit Post{% else %}New Post{% endif %}</div>
+    {% if post %}
+    <div class="w-page-sub">{{ post.slug }} · {{ post.reading_time }} min read · {{ post.views }} views</div>
+    {% endif %}
+  </div>
+  <a href="{% url 'writer:dashboard' %}" class="btn btn-ghost btn-sm">← Dashboard</a>
+</div>
+
+<form method="post" id="post-form">
+  {% csrf_token %}
+  <input type="hidden" name="blocks_json" id="blocks-json-input" value="{{ blocks_json }}">
+
+  <div class="editor-layout">
+
+    <!-- ── Left: Block editor ── -->
+    <div>
+      <!-- Title & slug -->
+      <div class="w-card" style="padding:16px;margin-bottom:16px">
+        <div class="form-group" style="margin-bottom:10px">
+          <label>TITLE *</label>
+          <input type="text" name="title" id="title-input"
+                 value="{{ post.title|default:'' }}" placeholder="Post title…" required>
+        </div>
+        <div class="form-group" style="margin-bottom:0">
+          <label>SLUG</label>
+          <input type="text" name="slug" id="slug-input"
+                 value="{{ post.slug|default:'' }}" placeholder="auto-generated from title">
+          <div class="form-hint">Leave blank to auto-generate from title.</div>
+        </div>
+      </div>
+
+      <!-- Block editor -->
+      <div class="w-card block-editor">
+        <div class="block-editor-header">
+          <span class="block-editor-label">CONTENT BLOCKS</span>
+          <span class="block-count" id="block-count">0 blocks</span>
+        </div>
+
+        <div id="block-list"></div>
+
+        <div class="add-block-bar">
+          <div class="add-block-label">ADD BLOCK</div>
+          <div class="add-block-btns">
+            <button type="button" class="add-btn" onclick="addBlock('paragraph')">¶ Paragraph</button>
+            <button type="button" class="add-btn" onclick="addBlock('heading2')">H2 Heading</button>
+            <button type="button" class="add-btn" onclick="addBlock('heading3')">H3 Heading</button>
+            <button type="button" class="add-btn" onclick="addBlock('image')">🖼 Image</button>
+            <button type="button" class="add-btn" onclick="addBlock('video')">▶ Video</button>
+            <button type="button" class="add-btn" onclick="addBlock('list')">• List</button>
+            <button type="button" class="add-btn" onclick="addBlock('quote')">" Quote</button>
+            <button type="button" class="add-btn" onclick="addBlock('callout')">💬 Callout</button>
+            <button type="button" class="add-btn" onclick="addBlock('code')">⌨ Code</button>
+            <button type="button" class="add-btn" onclick="addBlock('table')">⊞ Table</button>
+            <button type="button" class="add-btn" onclick="addBlock('divider')">— Divider</button>
+            <button type="button" class="add-btn" onclick="addBlock('tags')">🏷 Tags</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Right: Sidebar ── -->
+    <div class="sidebar">
+
+      <!-- Publishing -->
+      <div class="w-card sidebar-section">
+        <div class="sidebar-title">PUBLISHING</div>
+        <div class="form-group">
+          <label>STATUS</label>
+          <select name="status">
+            <option value="draft"     {% if not post or post.status == 'draft' %}selected{% endif %}>Draft</option>
+            <option value="published" {% if post and post.status == 'published' %}selected{% endif %}>Published</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>PUBLISHED AT</label>
+          <input type="datetime-local" name="published_at"
+                 value="{% if post and post.published_at %}{{ post.published_at|date:'Y-m-d' }}T{{ post.published_at|time:'H:i' }}{% endif %}">
+          <div class="form-hint">Leave blank to auto-set on publish.</div>
+        </div>
+        <div class="form-group" style="margin-bottom:0">
+          <label class="checkbox-label">
+            <input type="checkbox" name="featured"
+                   {% if post and post.featured %}checked{% endif %}>
+            Featured post
+          </label>
+        </div>
+      </div>
+
+      <!-- Excerpt & Cover -->
+      <div class="w-card sidebar-section">
+        <div class="sidebar-title">SUMMARY</div>
+        <div class="form-group">
+          <label>EXCERPT *</label>
+          <textarea name="excerpt" rows="3" placeholder="1–2 sentence summary…">{{ post.excerpt|default:'' }}</textarea>
+        </div>
+        <div class="form-group" style="margin-bottom:0">
+          <label>COVER IMAGE URL</label>
+          <input type="url" name="cover_image" value="{{ post.cover_image|default:'' }}" placeholder="https://…">
+        </div>
+      </div>
+
+      <!-- Tags -->
+      <div class="w-card sidebar-section">
+        <div class="sidebar-title">TAGS</div>
+        {% if tags %}
+        <div class="tag-checks">
+          {% for tag in tags %}
+          <label class="tag-check">
+            <input type="checkbox" name="tags" value="{{ tag.id }}"
+                   {% if tag.id in selected_tag_ids %}checked{% endif %}>
+            <span class="tag-check-pill" style="background:{{ tag.color }}22;color:{{ tag.color }}">{{ tag.name }}</span>
+          </label>
+          {% endfor %}
+        </div>
+        {% else %}
+        <p style="color:var(--text-muted);font-size:12px">
+          No tags yet. <a href="{% url 'writer:tags' %}" style="color:var(--primary)">Create tags →</a>
+        </p>
+        {% endif %}
+      </div>
+
+      <!-- Order -->
+      <div class="w-card sidebar-section">
+        <div class="sidebar-title">SORT ORDER</div>
+        <div class="form-group" style="margin-bottom:0">
+          <label>ORDER</label>
+          <input type="number" name="order" value="{{ post.order|default:0 }}" min="0">
+          <div class="form-hint">Lower = appears first in listings.</div>
+        </div>
+      </div>
+
+      <!-- SEO -->
+      <div class="w-card sidebar-section">
+        <div class="sidebar-title">SEO OVERRIDES</div>
+        <div class="form-group">
+          <label>SEO TITLE <span style="color:var(--text-muted);font-weight:400">(max 60)</span></label>
+          <input type="text" name="seo_title" maxlength="60"
+                 value="{{ post.seo_title|default:'' }}" placeholder="Falls back to title">
+        </div>
+        <div class="form-group">
+          <label>META DESCRIPTION <span style="color:var(--text-muted);font-weight:400">(max 160)</span></label>
+          <textarea name="seo_description" maxlength="160" rows="3"
+                    placeholder="Falls back to excerpt">{{ post.seo_description|default:'' }}</textarea>
+        </div>
+        <div class="form-group" style="margin-bottom:0">
+          <label>OG IMAGE URL</label>
+          <input type="url" name="og_image" value="{{ post.og_image|default:'' }}"
+                 placeholder="Falls back to cover image">
+        </div>
+      </div>
+
+    </div><!-- /sidebar -->
+  </div><!-- /editor-layout -->
+
+  <!-- Sticky save bar -->
+  <div class="save-bar">
+    <div class="save-bar-left">
+      {% if post %}
+      <form method="post" action="{% url 'writer:post_delete' post.slug %}"
+            onsubmit="return confirm('Permanently delete this post?')">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-danger btn-sm">Delete post</button>
+      </form>
+      {% endif %}
+    </div>
+    <div style="display:flex;gap:10px">
+      <a href="{% url 'writer:dashboard' %}" class="btn btn-ghost">Cancel</a>
+      <button type="submit" class="btn btn-primary">Save post</button>
+    </div>
+  </div>
+
+</form>
+{% endblock %}
+
+{% block extra_script %}
+<script>
+/* ─────────────────────────────────────────────────────────────────────────────
+   Block Editor
+   _blocks  = source of truth (array of block objects)
+   Structural ops (add / move / delete) → collectFromDom → mutate → renderAll
+   Content edits → live via oninput, collected again on submit
+───────────────────────────────────────────────────────────────────────────── */
+
+let _blocks = [];
+
+/* ── Init ── */
+(function init() {
+  try {
+    const raw = document.getElementById('blocks-json-input').value;
+    _blocks = JSON.parse(raw) || [];
+  } catch (e) { _blocks = []; }
+  renderAll();
+
+  // Auto-slug from title
+  const titleEl = document.getElementById('title-input');
+  const slugEl  = document.getElementById('slug-input');
+  if (titleEl && slugEl) {
+    titleEl.addEventListener('input', function() {
+      if (!slugEl.dataset.manual) {
+        slugEl.value = toSlug(this.value);
+      }
+    });
+    slugEl.addEventListener('input', function() {
+      slugEl.dataset.manual = this.value ? '1' : '';
+    });
+  }
+
+  // Sync before submit
+  document.getElementById('post-form').addEventListener('submit', function() {
+    collectFromDom();
+    syncJson();
+  });
+})();
+
+function toSlug(s) {
+  return s.toLowerCase().trim()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-');
+}
+
+/* ── Render ── */
+function renderAll() {
+  const list = document.getElementById('block-list');
+  const scrollY = window.scrollY;
+  list.innerHTML = '';
+  _blocks.forEach((block, idx) => {
+    const el = document.createElement('div');
+    el.className = 'block-card';
+    el.dataset.idx = idx;
+    el.innerHTML = buildBlockHTML(block, idx);
+    list.appendChild(el);
+  });
+  document.getElementById('block-count').textContent =
+    _blocks.length + ' block' + (_blocks.length !== 1 ? 's' : '');
+  window.scrollTo(0, scrollY);
+}
+
+/* ── Block HTML templates ── */
+function buildBlockHTML(b, idx) {
+  const isFirst = idx === 0;
+  const isLast  = idx === _blocks.length - 1;
+  const typeLabels = {
+    paragraph:'PARAGRAPH', heading2:'HEADING 2', heading3:'HEADING 3',
+    image:'IMAGE', video:'VIDEO', list:'LIST', quote:'QUOTE',
+    callout:'CALLOUT', code:'CODE', table:'TABLE', divider:'DIVIDER', tags:'TAGS',
+  };
+
+  const head = `
+    <div class="block-card-head">
+      <span class="block-type-badge">${typeLabels[b.type] || b.type.toUpperCase()}</span>
+      <div class="block-card-actions">
+        <button type="button" class="block-btn" onclick="moveBlock(${idx},-1)" ${isFirst?'disabled':''} title="Move up">↑</button>
+        <button type="button" class="block-btn" onclick="moveBlock(${idx},1)"  ${isLast?'disabled':''} title="Move down">↓</button>
+        <button type="button" class="block-btn del" onclick="removeBlock(${idx})" title="Delete">✕</button>
+      </div>
+    </div>`;
+
+  const body = '<div class="block-body">' + blockFields(b) + '</div>';
+  return head + body;
+}
+
+function esc(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function blockFields(b) {
+  switch (b.type) {
+    case 'paragraph':
+      return field('CONTENT', `<textarea data-f="content" oninput="liveUpdate(this)">${esc(b.content)}</textarea>`);
+
+    case 'heading2':
+    case 'heading3':
+      return field('CONTENT', `<input type="text" data-f="content" value="${esc(b.content)}" oninput="liveUpdate(this)">`);
+
+    case 'image':
+      return field('URL', `<input type="url" data-f="url" value="${esc(b.url)}" oninput="liveUpdate(this)" placeholder="https://…">`)
+           + field('ALT TEXT', `<input type="text" data-f="alt" value="${esc(b.alt)}" oninput="liveUpdate(this)">`)
+           + field('CAPTION', `<input type="text" data-f="caption" value="${esc(b.caption)}" oninput="liveUpdate(this)">`);
+
+    case 'video':
+      return field('URL', `<input type="url" data-f="url" value="${esc(b.url)}" oninput="liveUpdate(this)" placeholder="https://…">`)
+           + field('POSTER URL', `<input type="url" data-f="poster" value="${esc(b.poster||'')}" oninput="liveUpdate(this)" placeholder="Optional thumbnail">`)
+           + field('CAPTION', `<input type="text" data-f="caption" value="${esc(b.caption)}" oninput="liveUpdate(this)">`);
+
+    case 'quote':
+      return field('QUOTE TEXT', `<textarea data-f="content" oninput="liveUpdate(this)">${esc(b.content)}</textarea>`)
+           + field('ATTRIBUTION', `<input type="text" data-f="attribution" value="${esc(b.attribution||'')}" oninput="liveUpdate(this)" placeholder="— Author">`);
+
+    case 'callout': {
+      const variants = ['info','warning','success','error'];
+      const opts = variants.map(v => `<option value="${v}" ${b.variant===v?'selected':''}>${v.charAt(0).toUpperCase()+v.slice(1)}</option>`).join('');
+      return field('VARIANT', `<select data-f="variant" onchange="liveUpdate(this)">${opts}</select>`)
+           + field('CONTENT', `<textarea data-f="content" oninput="liveUpdate(this)">${esc(b.content)}</textarea>`);
+    }
+
+    case 'code':
+      return field('LANGUAGE', `<input type="text" data-f="language" value="${esc(b.language||'')}" placeholder="python, js, bash…" oninput="liveUpdate(this)">`)
+           + field('CODE', `<textarea data-f="content" style="font-family:monospace;font-size:12px" oninput="liveUpdate(this)">${esc(b.content)}</textarea>`)
+           + field('CAPTION', `<input type="text" data-f="caption" value="${esc(b.caption||'')}" oninput="liveUpdate(this)">`);
+
+    case 'list': {
+      const isBullet = (b.variant || 'bullet') === 'bullet';
+      const items = (b.items || ['']).map((item, i) =>
+        `<div class="list-item-row">
+          <input type="text" data-item="${i}" value="${esc(item)}" oninput="liveUpdate(this)" placeholder="Item ${i+1}">
+          <button type="button" onclick="removeListItem(this)" title="Remove">✕</button>
+        </div>`
+      ).join('');
+      return field('VARIANT',
+        `<select data-f="variant" onchange="liveUpdate(this)">
+          <option value="bullet" ${isBullet?'selected':''}>Bullet</option>
+          <option value="numbered" ${!isBullet?'selected':''}>Numbered</option>
+        </select>`)
+        + `<div class="form-group">
+            <label>ITEMS</label>
+            <div class="list-items" data-items-container>${items}</div>
+            <button type="button" class="add-btn" style="margin-top:6px" onclick="addListItem(this)">+ Add item</button>
+          </div>`;
+    }
+
+    case 'table': {
+      const headers = (b.headers || ['Column 1']).map((h, i) =>
+        `<input type="text" data-header="${i}" value="${esc(h)}" oninput="liveUpdate(this)" placeholder="Header ${i+1}">`
+      ).join('');
+      const rows = (b.rows || [['']]).map((row, ri) =>
+        `<div class="table-row" data-row="${ri}">
+          ${row.map((cell, ci) => `<input type="text" data-cell="${ci}" value="${esc(cell)}" oninput="liveUpdate(this)" placeholder="r${ri+1}c${ci+1}">`).join('')}
+          <button type="button" class="block-btn del" onclick="removeTableRow(this)" title="Remove row">✕</button>
+        </div>`
+      ).join('');
+      return field('CAPTION', `<input type="text" data-f="caption" value="${esc(b.caption||'')}" oninput="liveUpdate(this)">`)
+        + `<div class="form-group">
+            <label>HEADERS</label>
+            <div class="table-row" data-headers-row>${headers}</div>
+            <div style="display:flex;gap:6px;margin-top:4px">
+              <button type="button" class="add-btn" onclick="addTableColumn(this)">+ Column</button>
+              <button type="button" class="add-btn" onclick="removeTableColumn(this)">− Column</button>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>ROWS</label>
+            <div data-rows-container>${rows}</div>
+            <button type="button" class="add-btn" style="margin-top:4px" onclick="addTableRow(this)">+ Row</button>
+          </div>`;
+    }
+
+    case 'divider':
+      return '<div style="text-align:center;color:var(--text-muted);padding:4px 0;font-size:18px;letter-spacing:8px">— — —</div>';
+
+    case 'tags': {
+      const items = (b.items || ['']).map((item, i) =>
+        `<div class="list-item-row">
+          <input type="text" data-item="${i}" value="${esc(item)}" oninput="liveUpdate(this)" placeholder="tag-slug">
+          <button type="button" onclick="removeListItem(this)" title="Remove">✕</button>
+        </div>`
+      ).join('');
+      return `<div class="form-group">
+        <label>TAG SLUGS</label>
+        <div class="list-items" data-items-container>${items}</div>
+        <button type="button" class="add-btn" style="margin-top:6px" onclick="addListItem(this)">+ Add tag</button>
+      </div>`;
+    }
+
+    default:
+      return field('CONTENT', `<textarea data-f="content" oninput="liveUpdate(this)">${esc(b.content||'')}</textarea>`);
+  }
+}
+
+function field(label, inputHtml) {
+  return `<div class="form-group"><label>${label}</label>${inputHtml}</div>`;
+}
+
+/* ── Live update (called oninput/onchange) ── */
+function liveUpdate(el) {
+  const card = el.closest('.block-card');
+  if (!card) return;
+  const idx = parseInt(card.dataset.idx, 10);
+  collectCardIntoBlock(card, idx);
+  syncJson();
+}
+
+/* ── Collect all cards → _blocks ── */
+function collectFromDom() {
+  document.querySelectorAll('.block-card').forEach((card, idx) => {
+    collectCardIntoBlock(card, idx);
+  });
+}
+
+function collectCardIntoBlock(card, idx) {
+  if (!_blocks[idx]) return;
+  const b = _blocks[idx];
+  const get = (sel) => card.querySelector(sel);
+  const val = (sel) => { const el = get(sel); return el ? el.value : ''; };
+
+  switch (b.type) {
+    case 'paragraph':
+      b.content = val('[data-f="content"]'); break;
+    case 'heading2': case 'heading3':
+      b.content = val('[data-f="content"]'); break;
+    case 'image':
+      b.url     = val('[data-f="url"]');
+      b.alt     = val('[data-f="alt"]');
+      b.caption = val('[data-f="caption"]'); break;
+    case 'video':
+      b.url     = val('[data-f="url"]');
+      b.poster  = val('[data-f="poster"]');
+      b.caption = val('[data-f="caption"]'); break;
+    case 'quote':
+      b.content     = val('[data-f="content"]');
+      b.attribution = val('[data-f="attribution"]'); break;
+    case 'callout':
+      b.variant = val('[data-f="variant"]');
+      b.content = val('[data-f="content"]'); break;
+    case 'code':
+      b.language = val('[data-f="language"]');
+      b.content  = val('[data-f="content"]');
+      b.caption  = val('[data-f="caption"]'); break;
+    case 'list':
+      b.variant = val('[data-f="variant"]');
+      b.items   = Array.from(card.querySelectorAll('[data-item]')).map(i => i.value); break;
+    case 'table':
+      b.caption  = val('[data-f="caption"]');
+      b.headers  = Array.from(card.querySelectorAll('[data-header]')).map(h => h.value);
+      b.rows     = Array.from(card.querySelectorAll('[data-row]')).map(row =>
+        Array.from(row.querySelectorAll('[data-cell]')).map(c => c.value)); break;
+    case 'tags':
+      b.items = Array.from(card.querySelectorAll('[data-item]')).map(i => i.value).filter(Boolean); break;
+    case 'divider': break;
+  }
+}
+
+/* ── Sync _blocks → hidden input ── */
+function syncJson() {
+  document.getElementById('blocks-json-input').value = JSON.stringify(_blocks);
+}
+
+/* ── Add block ── */
+function addBlock(type) {
+  collectFromDom();
+  const defaults = {
+    paragraph: { type:'paragraph',  content:'' },
+    heading2:  { type:'heading2',   content:'' },
+    heading3:  { type:'heading3',   content:'' },
+    image:     { type:'image',      url:'', alt:'', caption:'' },
+    video:     { type:'video',      url:'', poster:'', caption:'' },
+    list:      { type:'list',       variant:'bullet', items:[''] },
+    table:     { type:'table',      caption:'', headers:['Column 1','Column 2'], rows:[['','']] },
+    quote:     { type:'quote',      content:'', attribution:'' },
+    callout:   { type:'callout',    variant:'info', content:'' },
+    code:      { type:'code',       language:'', content:'', caption:'' },
+    divider:   { type:'divider' },
+    tags:      { type:'tags',       items:[] },
+  };
+  _blocks.push(defaults[type] || { type, content:'' });
+  renderAll();
+  syncJson();
+  // Scroll to new block
+  setTimeout(() => {
+    const cards = document.querySelectorAll('.block-card');
+    if (cards.length) cards[cards.length-1].scrollIntoView({ behavior:'smooth', block:'nearest' });
+  }, 50);
+}
+
+/* ── Move block ── */
+function moveBlock(idx, dir) {
+  collectFromDom();
+  const newIdx = idx + dir;
+  if (newIdx < 0 || newIdx >= _blocks.length) return;
+  [_blocks[idx], _blocks[newIdx]] = [_blocks[newIdx], _blocks[idx]];
+  renderAll();
+  syncJson();
+}
+
+/* ── Remove block ── */
+function removeBlock(idx) {
+  collectFromDom();
+  _blocks.splice(idx, 1);
+  renderAll();
+  syncJson();
+}
+
+/* ── List helpers ── */
+function addListItem(btn) {
+  const container = btn.previousElementSibling;
+  const idx       = container.querySelectorAll('[data-item]').length;
+  const row = document.createElement('div');
+  row.className = 'list-item-row';
+  row.innerHTML = `<input type="text" data-item="${idx}" oninput="liveUpdate(this)" placeholder="Item ${idx+1}">
+                   <button type="button" onclick="removeListItem(this)" title="Remove">✕</button>`;
+  container.appendChild(row);
+  const card = btn.closest('.block-card');
+  const blockIdx = parseInt(card.dataset.idx, 10);
+  if (_blocks[blockIdx] && _blocks[blockIdx].items) {
+    _blocks[blockIdx].items.push('');
+  }
+  syncJson();
+}
+
+function removeListItem(btn) {
+  const row  = btn.parentElement;
+  const container = row.parentElement;
+  if (container.querySelectorAll('[data-item]').length <= 1) return;
+  const card = btn.closest('.block-card');
+  row.remove();
+  // Re-index remaining items
+  container.querySelectorAll('[data-item]').forEach((inp, i) => inp.dataset.item = i);
+  collectCardIntoBlock(card, parseInt(card.dataset.idx, 10));
+  syncJson();
+}
+
+/* ── Table helpers ── */
+function addTableRow(btn) {
+  const card = btn.closest('.block-card');
+  const idx  = parseInt(card.dataset.idx, 10);
+  collectCardIntoBlock(card, idx);
+  const colCount = (_blocks[idx].headers || []).length;
+  _blocks[idx].rows.push(new Array(colCount).fill(''));
+  renderAll(); syncJson();
+}
+
+function removeTableRow(btn) {
+  const card = btn.closest('.block-card');
+  const idx  = parseInt(card.dataset.idx, 10);
+  collectCardIntoBlock(card, idx);
+  const rowEl = btn.parentElement;
+  const rowIdx = parseInt(rowEl.dataset.row, 10);
+  if (_blocks[idx].rows.length <= 1) return;
+  _blocks[idx].rows.splice(rowIdx, 1);
+  renderAll(); syncJson();
+}
+
+function addTableColumn(btn) {
+  const card = btn.closest('.block-card');
+  const idx  = parseInt(card.dataset.idx, 10);
+  collectCardIntoBlock(card, idx);
+  _blocks[idx].headers.push('Column ' + (_blocks[idx].headers.length + 1));
+  _blocks[idx].rows.forEach(row => row.push(''));
+  renderAll(); syncJson();
+}
+
+function removeTableColumn(btn) {
+  const card = btn.closest('.block-card');
+  const idx  = parseInt(card.dataset.idx, 10);
+  collectCardIntoBlock(card, idx);
+  if (_blocks[idx].headers.length <= 1) return;
+  _blocks[idx].headers.pop();
+  _blocks[idx].rows.forEach(row => row.pop());
+  renderAll(); syncJson();
+}
+</script>
+{% endblock %}

@@ -27,4 +27,5 @@ urlpatterns = [
     path('', api_root, name='api-root'),
     path('admin/', admin.site.urls),
     path('api/', include('portfolio.urls', namespace='portfolio')),
+    path('writer/', include('portfolio.writer_urls', namespace='writer')),
 ]
