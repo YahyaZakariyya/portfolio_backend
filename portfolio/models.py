@@ -9,6 +9,7 @@ All models include:
 
 from django.db import models
 from django.core.validators import MinValueValidator, MaxValueValidator
+from django.utils import timezone
 
 
 class TimestampedModel(models.Model):
@@ -218,3 +219,137 @@ class Certification(TimestampedModel):
 
     def __str__(self):
         return f"{self.name} from {self.issuing_organization}"
+
+
+# ─── Blog ──────────────────────────────────────────────────────
+
+
+class BlogTag(TimestampedModel):
+    """Tag for categorising blog posts."""
+    name = models.CharField(max_length=50)
+    slug = models.SlugField(max_length=60, unique=True)
+    color = models.CharField(
+        max_length=7,
+        default='#3b82f6',
+        help_text="Hex color for tag pill, e.g. #3b82f6"
+    )
+
+    class Meta:
+        ordering = ['name']
+
+    def __str__(self):
+        return self.name
+
+
+class BlogPost(TimestampedModel):
+    """
+    Blog post with structured content blocks.
+
+    The `blocks` field is a JSON array of block objects, e.g.:
+      [
+        {"type": "paragraph", "content": "Hello world"},
+        {"type": "heading2", "content": "Section title"},
+        {"type": "code", "language": "python", "content": "print('hi')", "caption": ""},
+        {"type": "image", "url": "...", "alt": "...", "caption": ""},
+        {"type": "callout", "variant": "info", "content": "Note..."},
+        {"type": "list", "variant": "bullet", "items": ["item1", "item2"]},
+        {"type": "quote", "content": "Quote text", "attribution": "Author"},
+        {"type": "table", "caption": "", "headers": ["A", "B"], "rows": [["1", "2"]]},
+        {"type": "video", "url": "...", "poster": "", "caption": ""},
+        {"type": "divider"},
+        {"type": "tags", "items": ["python", "django"]}
+      ]
+    """
+
+    class Status(models.TextChoices):
+        DRAFT = 'draft', 'Draft'
+        PUBLISHED = 'published', 'Published'
+
+    title = models.CharField(max_length=300)
+    slug = models.SlugField(max_length=320, unique=True)
+    excerpt = models.TextField(
+        help_text="Short summary shown in listing cards (1-2 sentences)"
+    )
+    cover_image = models.URLField(
+        blank=True,
+        default='',
+        help_text="URL for cover / hero image"
+    )
+
+    blocks = models.JSONField(
+        default=list,
+        help_text="Array of content block objects (see model docstring for format)"
+    )
+
+    tags = models.ManyToManyField(
+        BlogTag,
+        blank=True,
+        related_name='posts'
+    )
+
+    status = models.CharField(
+        max_length=10,
+        choices=Status.choices,
+        default=Status.DRAFT,
+    )
+    published_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Set automatically when status → Published; can be overridden"
+    )
+
+    reading_time = models.PositiveIntegerField(
+        default=0,
+        help_text="Estimated reading time in minutes (auto-calculated on save)"
+    )
+    views = models.PositiveIntegerField(default=0, editable=False)
+    likes = models.PositiveIntegerField(default=0, editable=False)
+
+    featured = models.BooleanField(
+        default=False,
+        help_text="Show as featured / hero post in the blog listing"
+    )
+    order = models.PositiveIntegerField(default=0, help_text="Manual sort order")
+
+    # SEO overrides
+    seo_title = models.CharField(
+        max_length=60,
+        blank=True,
+        default='',
+        help_text="Override <title> tag (max 60 chars; falls back to title)"
+    )
+    seo_description = models.CharField(
+        max_length=160,
+        blank=True,
+        default='',
+        help_text="Meta description (max 160 chars; falls back to excerpt)"
+    )
+    og_image = models.URLField(
+        blank=True,
+        default='',
+        help_text="OpenGraph image URL (falls back to cover_image)"
+    )
+
+    class Meta:
+        ordering = ['-published_at', '-created_at']
+
+    def __str__(self):
+        return self.title
+
+    def save(self, *args, **kwargs):
+        # Auto-set published_at on first publish
+        if self.status == self.Status.PUBLISHED and not self.published_at:
+            self.published_at = timezone.now()
+
+        # Auto-calculate reading time (~200 wpm)
+        word_count = 0
+        for block in (self.blocks or []):
+            content = block.get('content', '')
+            if isinstance(content, str):
+                word_count += len(content.split())
+            for item in (block.get('items') or []):
+                if isinstance(item, str):
+                    word_count += len(item.split())
+        self.reading_time = max(1, round(word_count / 200))
+
+        super().save(*args, **kwargs)
