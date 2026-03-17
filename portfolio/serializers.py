@@ -4,7 +4,10 @@ Read-only serializers for all portfolio models.
 """
 
 from rest_framework import serializers
-from .models import Profile, Skill, Project, Experience, Education, Certification
+from .models import (
+    Profile, Skill, Project, Experience, Education, Certification,
+    BlogTag, BlogPost,
+)
 
 
 class ProfileSerializer(serializers.ModelSerializer):
@@ -156,3 +159,56 @@ class CertificationSerializer(serializers.ModelSerializer):
             'order',
         ]
         read_only_fields = fields
+
+
+# ─── Single-page portfolio serializer ─────────────────────────
+
+
+class PortfolioSerializer(serializers.Serializer):
+    """
+    Combines all portfolio data into a single response.
+    Used by GET /api/portfolio/ for the home page.
+    """
+    profile = ProfileSerializer()
+    skills = SkillSerializer(many=True)
+    projects = ProjectListSerializer(many=True)
+    experience = ExperienceSerializer(many=True)
+    education = EducationSerializer(many=True)
+    certifications = CertificationSerializer(many=True)
+
+
+# ─── Blog serializers ──────────────────────────────────────────
+
+
+class BlogTagSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = BlogTag
+        fields = ['id', 'name', 'slug', 'color']
+
+
+class BlogPostListSerializer(serializers.ModelSerializer):
+    """Lightweight serializer for blog listing cards."""
+    tags = BlogTagSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = BlogPost
+        fields = [
+            'id', 'title', 'slug', 'excerpt', 'cover_image',
+            'tags', 'published_at', 'reading_time', 'views', 'likes',
+            'featured', 'order',
+        ]
+
+
+class BlogPostDetailSerializer(serializers.ModelSerializer):
+    """Full serializer for individual blog post pages."""
+    tags = BlogTagSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = BlogPost
+        fields = [
+            'id', 'title', 'slug', 'excerpt', 'cover_image',
+            'blocks', 'tags', 'status', 'published_at',
+            'reading_time', 'views', 'likes', 'featured', 'order',
+            'seo_title', 'seo_description', 'og_image',
+            'created_at', 'updated_at',
+        ]
