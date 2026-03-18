@@ -7,9 +7,16 @@ All models include:
 - `__str__` for readable admin display
 """
 
+import logging
+import threading
+
+import requests
+from django.conf import settings
 from django.db import models
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.utils import timezone
+
+logger = logging.getLogger(__name__)
 
 
 class TimestampedModel(models.Model):
@@ -336,6 +343,25 @@ class BlogPost(TimestampedModel):
     def __str__(self):
         return self.title
 
+    def _trigger_revalidation(self):
+        """Fire-and-forget webhook to revalidate the Next.js frontend cache."""
+        frontend_url = getattr(settings, 'FRONTEND_URL', '')
+        secret = getattr(settings, 'REVALIDATE_SECRET', '')
+        if not frontend_url or not secret:
+            return
+
+        def _call():
+            try:
+                requests.post(
+                    f'{frontend_url}/api/revalidate',
+                    json={'secret': secret, 'slug': self.slug},
+                    timeout=5,
+                )
+            except Exception as exc:
+                logger.warning('Frontend revalidation failed: %s', exc)
+
+        threading.Thread(target=_call, daemon=True).start()
+
     def save(self, *args, **kwargs):
         # Auto-set published_at on first publish
         if self.status == self.Status.PUBLISHED and not self.published_at:
@@ -353,3 +379,4 @@ class BlogPost(TimestampedModel):
         self.reading_time = max(1, round(word_count / 200))
 
         super().save(*args, **kwargs)
+        self._trigger_revalidation()
