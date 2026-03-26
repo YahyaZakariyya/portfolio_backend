@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Writer{% endblock %} — Portfolio</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0d1117;
+      --surface:   #161b22;
+      --surface2:  #1c2128;
+      --border:    #30363d;
+      --text:      #c9d1d9;
+      --text-muted:#7d8590;
+      --primary:   #00c8f0;
+      --primary-dim:#003d4d;
+      --success:   #3fb950;
+      --warning:   #d29922;
+      --danger:    #f85149;
+      --radius:    6px;
+      --nav-h:     52px;
+    }
+
+    html, body { height: 100%; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    /* ── Nav ── */
+    .w-nav {
+      position: fixed; top: 0; left: 0; right: 0;
+      height: var(--nav-h);
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 20px;
+      z-index: 100;
+    }
+    .w-nav-brand {
+      font-weight: 700; font-size: 15px; color: var(--primary);
+      letter-spacing: .04em; text-decoration: none;
+    }
+    .w-nav-brand span { color: var(--text-muted); font-weight: 400; }
+    .w-nav-links { display: flex; gap: 4px; }
+    .w-nav-links a {
+      color: var(--text-muted); text-decoration: none;
+      padding: 5px 12px; border-radius: var(--radius);
+      font-size: 13px; transition: all .15s;
+    }
+    .w-nav-links a:hover, .w-nav-links a.active {
+      background: var(--surface2); color: var(--text);
+    }
+    .w-nav-right { display: flex; align-items: center; gap: 12px; }
+    .w-nav-user { font-size: 13px; color: var(--text-muted); }
+
+    /* ── Layout ── */
+    .w-body {
+      padding-top: var(--nav-h);
+      min-height: 100vh;
+    }
+    .w-content {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 28px 24px;
+    }
+
+    /* ── Flash messages ── */
+    .w-messages { margin-bottom: 20px; }
+    .w-msg {
+      padding: 10px 14px;
+      border-radius: var(--radius);
+      border: 1px solid;
+      margin-bottom: 8px;
+      font-size: 13px;
+    }
+    .w-msg.success { background: rgba(63,185,80,.1); border-color: var(--success); color: var(--success); }
+    .w-msg.error   { background: rgba(248,81,73,.1);  border-color: var(--danger);  color: var(--danger); }
+    .w-msg.info    { background: rgba(0,200,240,.1);  border-color: var(--primary); color: var(--primary); }
+
+    /* ── Page header ── */
+    .w-page-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 24px;
+    }
+    .w-page-title { font-size: 20px; font-weight: 600; }
+    .w-page-sub   { color: var(--text-muted); font-size: 13px; margin-top: 3px; }
+
+    /* ── Buttons ── */
+    .btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 7px 14px; border-radius: var(--radius);
+      font-size: 13px; font-weight: 500; cursor: pointer;
+      border: 1px solid transparent; text-decoration: none;
+      transition: all .15s; line-height: 1;
+    }
+    .btn-primary  { background: var(--primary);    color: #000;            border-color: var(--primary); }
+    .btn-primary:hover { background: #33d6f5; border-color: #33d6f5; }
+    .btn-ghost    { background: transparent; color: var(--text-muted); border-color: var(--border); }
+    .btn-ghost:hover  { background: var(--surface2); color: var(--text); }
+    .btn-danger   { background: transparent; color: var(--danger); border-color: var(--danger); }
+    .btn-danger:hover { background: rgba(248,81,73,.1); }
+    .btn-success  { background: var(--success); color: #000; }
+    .btn-success:hover { opacity: .9; }
+    .btn-sm { padding: 4px 10px; font-size: 12px; }
+
+    /* ── Card ── */
+    .w-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+    }
+
+    /* ── Form elements ── */
+    .form-group { margin-bottom: 16px; }
+    label { display: block; font-size: 12px; font-weight: 600;
+            color: var(--text-muted); margin-bottom: 5px; letter-spacing: .04em; }
+    input[type=text], input[type=url], input[type=datetime-local], input[type=number],
+    input[type=color], input[type=password], textarea, select {
+      width: 100%; background: var(--bg); border: 1px solid var(--border);
+      border-radius: var(--radius); color: var(--text); font-size: 13px;
+      padding: 8px 10px; outline: none; transition: border-color .15s;
+      font-family: inherit;
+    }
+    input[type=text]:focus, input[type=url]:focus, input[type=datetime-local]:focus,
+    input[type=number]:focus, textarea:focus, select:focus {
+      border-color: var(--primary);
+    }
+    input[type=color] { height: 34px; padding: 3px 5px; cursor: pointer; }
+    textarea { resize: vertical; min-height: 80px; }
+    select option { background: var(--surface); }
+
+    .form-hint { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+    .form-row  { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+    /* ── Checkbox ── */
+    .checkbox-label {
+      display: flex; align-items: center; gap: 8px;
+      cursor: pointer; font-size: 13px; color: var(--text);
+    }
+    .checkbox-label input { width: auto; }
+
+    {% block extra_style %}{% endblock %}
+  </style>
+</head>
+<body>
+
+<nav class="w-nav">
+  <a class="w-nav-brand" href="{% url 'writer:dashboard' %}">
+    ✦ Writer <span>Portal</span>
+  </a>
+  {% if user.is_authenticated %}
+  <div class="w-nav-links">
+    <a href="{% url 'writer:dashboard' %}"
+       class="{% block nav_dashboard %}{% endblock %}">Dashboard</a>
+    <a href="{% url 'writer:post_create' %}"
+       class="{% block nav_new %}{% endblock %}">New Post</a>
+    <a href="{% url 'writer:tags' %}"
+       class="{% block nav_tags %}{% endblock %}">Tags</a>
+  </div>
+  <div class="w-nav-right">
+    <span class="w-nav-user">{{ user.username }}</span>
+    <form method="post" action="{% url 'writer:logout' %}" style="margin:0">
+      {% csrf_token %}
+      <button type="submit" class="btn btn-ghost btn-sm">Sign out</button>
+    </form>
+  </div>
+  {% endif %}
+</nav>
+
+<div class="w-body">
+  <div class="w-content">
+
+    {% if messages %}
+    <div class="w-messages">
+      {% for msg in messages %}
+      <div class="w-msg {{ msg.tags }}">{{ msg }}</div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    {% block content %}{% endblock %}
+
+  </div>
+</div>
+
+{% block extra_script %}{% endblock %}
+</body>
+</html>

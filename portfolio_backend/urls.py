@@ -18,6 +18,7 @@ def api_root(request):
             "projects_detail": "/api/projects/<slug>/",
             "experience": "/api/experience/",
             "education": "/api/education/",
+            "certifications": "/api/certifications/",
         }
     })
 
@@ -26,4 +27,5 @@ urlpatterns = [
     path('', api_root, name='api-root'),
     path('admin/', admin.site.urls),
     path('api/', include('portfolio.urls', namespace='portfolio')),
+    path('writer/', include('portfolio.writer_urls', namespace='writer')),
 ]

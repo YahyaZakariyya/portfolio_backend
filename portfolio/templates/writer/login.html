@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sign in — Writer Portal</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0d1117; --surface: #161b22; --border: #30363d;
+      --text: #c9d1d9; --text-muted: #7d8590;
+      --primary: #00c8f0; --danger: #f85149; --radius: 6px;
+    }
+    body {
+      background: var(--bg); color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: 14px; height: 100vh;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .login-box {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 8px; padding: 36px 32px; width: 340px;
+    }
+    .login-logo {
+      text-align: center; margin-bottom: 28px;
+      font-size: 20px; font-weight: 700; color: var(--primary);
+      letter-spacing: .04em;
+    }
+    .login-logo span { display: block; font-size: 12px; font-weight: 400; color: var(--text-muted); margin-top: 4px; }
+    .form-group { margin-bottom: 14px; }
+    label { display: block; font-size: 12px; font-weight: 600; color: var(--text-muted); margin-bottom: 5px; letter-spacing: .04em; }
+    input {
+      width: 100%; background: var(--bg); border: 1px solid var(--border);
+      border-radius: var(--radius); color: var(--text); font-size: 13px;
+      padding: 9px 11px; outline: none; transition: border-color .15s;
+    }
+    input:focus { border-color: var(--primary); }
+    .btn-login {
+      width: 100%; background: var(--primary); color: #000;
+      border: none; border-radius: var(--radius); padding: 10px;
+      font-size: 14px; font-weight: 600; cursor: pointer;
+      margin-top: 8px; transition: opacity .15s;
+    }
+    .btn-login:hover { opacity: .9; }
+    .error {
+      background: rgba(248,81,73,.1); border: 1px solid var(--danger);
+      color: var(--danger); border-radius: var(--radius);
+      padding: 9px 12px; margin-bottom: 16px; font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+  <div class="login-box">
+    <div class="login-logo">
+      ✦ Writer Portal
+      <span>Sign in to manage your blog</span>
+    </div>
+
+    {% if error %}
+    <div class="error">{{ error }}</div>
+    {% endif %}
+
+    <form method="post">
+      {% csrf_token %}
+      <div class="form-group">
+        <label>Username</label>
+        <input type="text" name="username" autofocus autocomplete="username">
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" name="password" autocomplete="current-password">
+      </div>
+      <button type="submit" class="btn-login">Sign in</button>
+    </form>
+  </div>
+</body>
+</html>

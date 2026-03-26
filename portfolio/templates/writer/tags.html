@@ -1,0 +1,90 @@
+{% extends "writer/base.html" %}
+{% block title %}Tags{% endblock %}
+{% block nav_tags %}active{% endblock %}
+
+{% block extra_style %}
+.tags-layout { display: grid; grid-template-columns: 1fr 320px; gap: 24px; align-items: start; }
+.tag-list { list-style: none; }
+.tag-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 16px; border-bottom: 1px solid var(--border);
+}
+.tag-row:last-child { border-bottom: none; }
+.tag-pill {
+  display: inline-block; padding: 3px 12px; border-radius: 20px;
+  font-size: 13px; font-weight: 500;
+}
+.tag-meta { font-size: 12px; color: var(--text-muted); margin-left: 10px; }
+.create-form { padding: 20px; }
+.create-form .form-group { margin-bottom: 14px; }
+.color-row { display: flex; gap: 8px; align-items: center; }
+.color-row input[type=color] { width: 44px; flex-shrink: 0; }
+.color-row input[type=text] { flex: 1; }
+.section-title { font-size: 13px; font-weight: 600; color: var(--text-muted); margin-bottom: 16px; letter-spacing: .04em; }
+{% endblock %}
+
+{% block content %}
+<div class="w-page-header">
+  <div>
+    <div class="w-page-title">Tags</div>
+    <div class="w-page-sub">{{ tags|length }} tag{{ tags|length|pluralize }}</div>
+  </div>
+</div>
+
+<div class="tags-layout">
+  <!-- Tag list -->
+  <div class="w-card">
+    {% if tags %}
+    <ul class="tag-list">
+      {% for tag in tags %}
+      <li class="tag-row">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <span class="tag-pill" style="background:{{ tag.color }}22;color:{{ tag.color }}">{{ tag.name }}</span>
+          <span class="tag-meta">{{ tag.slug }}</span>
+          <span class="tag-meta">{{ tag.posts.count }} post{{ tag.posts.count|pluralize }}</span>
+        </div>
+        <form method="post"
+              onsubmit="return confirm('Delete tag \'{{ tag.name|escapejs }}\'?')">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="delete">
+          <input type="hidden" name="tag_id" value="{{ tag.id }}">
+          <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+        </form>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <div style="text-align:center;padding:40px;color:var(--text-muted)">No tags yet.</div>
+    {% endif %}
+  </div>
+
+  <!-- Create tag -->
+  <div class="w-card create-form">
+    <div class="section-title">NEW TAG</div>
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="create">
+      <div class="form-group">
+        <label>Name</label>
+        <input type="text" name="name" placeholder="e.g. Python" required>
+      </div>
+      <div class="form-group">
+        <label>Color</label>
+        <div class="color-row">
+          <input type="color" name="color" id="color-picker" value="#3b82f6">
+          <input type="text" id="color-text" value="#3b82f6" readonly>
+        </div>
+      </div>
+      <button type="submit" class="btn btn-primary" style="width:100%">Create Tag</button>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_script %}
+<script>
+  const picker = document.getElementById('color-picker');
+  const text   = document.getElementById('color-text');
+  picker.addEventListener('input', () => { text.value = picker.value; });
+</script>
+{% endblock %}
