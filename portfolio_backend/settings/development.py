@@ -13,12 +13,12 @@ ALLOWED_HOSTS = ['*']
 
 # Use SQLite in development when PostgreSQL is not available
 # Override the base.py PostgreSQL config for local development convenience
-DATABASES = {
-    'default': {
-        'ENGINE': config('DB_ENGINE', default='django.db.backends.sqlite3'),
-        'NAME': BASE_DIR / config('DB_NAME', default='db.sqlite3'),
-    }
-}
+# DATABASES = {
+#     'default': {
+#         'ENGINE': config('DB_ENGINE', default='django.db.backends.sqlite3'),
+#         'NAME': BASE_DIR / config('DB_NAME', default='db.sqlite3'),
+#     }
+# }
 
 # Use browsable API in development
 REST_FRAMEWORK = {
